@@ -2,14 +2,15 @@
 	export let data;
 </script>
 
-<ul>
-	{#each data.announcements as { delay, AdvertisedTrainIdent, from, description, to }}
-		<li>
-			{delay}
-			{description}
-			{AdvertisedTrainIdent}
-			från {from}
-			till {to}
-		</li>
+<ol>
+	{#each data.trains as train}
+		{#if train}
+			<div>
+				{train.description}
+				{train.id}
+				från {train.from} till {train.to}
+				är {train.delay} sekunder sent i {train.location}
+			</div>
+		{/if}
 	{/each}
-</ul>
+</ol>

@@ -1,8 +1,19 @@
 import { error } from '@sveltejs/kit';
-import { map, orderBy } from 'lodash/fp';
+import { find, groupBy, last, map } from 'lodash/fp';
 import locations from '$lib/short.json';
+import snapshot from '$lib/16.json';
 
+// noinspection JSUnusedGlobalSymbols
 export const load = async () => {
+	const trainAnnouncement = !process.env.TRAFIKVERKET_API_KEY
+		? snapshot
+		: await fetchAnnouncements();
+	return {
+		trains: trains(trainAnnouncement)
+	};
+};
+
+async function fetchAnnouncements() {
 	const r = await fetch('https://api.trafikinfo.trafikverket.se/v2/data.json', {
 		method: 'POST',
 		body: getBody(),
@@ -15,36 +26,12 @@ export const load = async () => {
 
 	const { RESPONSE } = await r.json();
 	const [announcements] = RESPONSE.RESULT;
-
-	return {
-		announcements: orderBy('delay', 'desc')(map(transform)(announcements.TrainAnnouncement))
-	};
-
-	function transform({
-		AdvertisedTimeAtLocation,
-		AdvertisedTrainIdent,
-		FromLocation,
-		ProductInformation,
-		ToLocation,
-		TimeAtLocationWithSeconds
-	}) {
-		const delay =
-			(Date.parse(TimeAtLocationWithSeconds) - Date.parse(AdvertisedTimeAtLocation)) * 1e-3;
-		const description = ProductInformation?.[0].Description;
-
-		const from = FromLocation?.map(name);
-		const to = ToLocation?.map(name);
-		return { delay, AdvertisedTrainIdent, from, description, to };
-	}
-
-	function name({ LocationName }) {
-		return locations[LocationName] ?? locations;
-	}
-};
+	return announcements.TrainAnnouncement;
+}
 
 function getBody() {
 	const now = Date.now();
-	const since = new Date(now - 8 * 6e4).toISOString();
+	const since = new Date(now - 64 * 6e4).toISOString();
 	return `
 <REQUEST>
   <LOGIN authenticationkey='${process.env.TRAFIKVERKET_API_KEY}' />
@@ -52,20 +39,68 @@ function getBody() {
       <FILTER>
          <AND>
             <EQ name='ActivityType' value='Avgang' />
-            <EQ name='Advertised' value='true' />
             <GT name='TimeAtLocationWithSeconds' value='${since}' />
          </AND>
       </FILTER>
       <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
       <INCLUDE>AdvertisedTrainIdent</INCLUDE>
-      <INCLUDE>Deviation</INCLUDE>
-      <INCLUDE>EstimatedTimeAtLocation</INCLUDE>
       <INCLUDE>FromLocation</INCLUDE>
+      <INCLUDE>LocationSignature</INCLUDE>
       <INCLUDE>ProductInformation</INCLUDE>
-      <INCLUDE>TimeAtLocation</INCLUDE>
       <INCLUDE>TimeAtLocationWithSeconds</INCLUDE>
       <INCLUDE>ToLocation</INCLUDE>
-      <INCLUDE>TrackAtLocation</INCLUDE>
      </QUERY>
 </REQUEST>`;
+}
+
+function trains(trainAnnouncement) {
+	return map(groupToTrain)(
+		Object.values(groupBy('AdvertisedTrainIdent')(map(transformAnnouncement)(trainAnnouncement)))
+	);
+
+	function groupToTrain(announcements) {
+		const advertised = find((value) => value.description)(announcements);
+		const latest = last(announcements);
+		return advertised
+			? {
+					id: advertised.AdvertisedTrainIdent,
+					description: advertised.description,
+					from: advertised.from,
+					to: advertised.to,
+					delay: latest.delay,
+					location: latest.location,
+					announcements
+			  }
+			: undefined;
+	}
+
+	function transformAnnouncement({
+		AdvertisedTimeAtLocation,
+		AdvertisedTrainIdent,
+		FromLocation,
+		LocationSignature,
+		ProductInformation,
+		ToLocation,
+		TimeAtLocationWithSeconds
+	}) {
+		const delay =
+			(Date.parse(TimeAtLocationWithSeconds) - Date.parse(AdvertisedTimeAtLocation)) * 1e-3;
+		const description = ProductInformation?.[0].Description;
+		const location = locations[LocationSignature] ?? LocationSignature;
+		const from = FromLocation?.map(name);
+		const to = ToLocation?.map(name);
+		return {
+			delay,
+			AdvertisedTrainIdent,
+			location,
+			from,
+			description,
+			to,
+			TimeAtLocationWithSeconds
+		};
+	}
+
+	function name({ LocationName }) {
+		return locations[LocationName] ?? locations;
+	}
 }
