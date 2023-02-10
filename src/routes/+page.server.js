@@ -8,7 +8,7 @@ export const load = async () => {
 		? snapshot
 		: await fetchAnnouncements();
 	return {
-		trains: trains(trainAnnouncement)
+		trains: trains(Date.now())(trainAnnouncement)
 	};
 };
 
@@ -30,7 +30,7 @@ async function fetchAnnouncements() {
 
 function getBody() {
 	const now = Date.now();
-	const since = new Date(now - 64 * 6e4).toISOString();
+	const since = new Date(now - 90 * 6e4).toISOString();
 	return `
 <REQUEST>
   <LOGIN authenticationkey='${process.env.TRAFIKVERKET_API_KEY}' />

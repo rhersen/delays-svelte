@@ -2,15 +2,17 @@
 	export let data;
 </script>
 
+<h1>Sveriges mest försenade tåg just nu</h1>
+
 <ol>
 	{#each data.trains as train}
 		{#if train}
-			<div>
+			<li>
 				{train.description}
 				{train.id}
 				från {train.from} till {train.to}
 				är {train.delay} sekunder sent i {train.location}
-			</div>
+			</li>
 		{/if}
 	{/each}
 </ol>
