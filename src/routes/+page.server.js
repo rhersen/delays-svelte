@@ -43,6 +43,7 @@ function getBody() {
       </FILTER>
       <INCLUDE>AdvertisedTimeAtLocation</INCLUDE>
       <INCLUDE>AdvertisedTrainIdent</INCLUDE>
+      <INCLUDE>Deviation</INCLUDE>
       <INCLUDE>FromLocation</INCLUDE>
       <INCLUDE>LocationSignature</INCLUDE>
       <INCLUDE>ProductInformation</INCLUDE>

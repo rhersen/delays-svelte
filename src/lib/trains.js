@@ -21,7 +21,7 @@ function groupToTrain(now) {
 
 		if (advertised) {
 			const actual = latest.TimeAtLocationWithSeconds;
-			if (now - new Date(actual) < 1000000)
+			if (now - new Date(actual) < 1000000 && latest.delay > 1.5)
 				return {
 					id: advertised.AdvertisedTrainIdent,
 					description: advertised.description,
@@ -29,6 +29,9 @@ function groupToTrain(now) {
 					to: advertised.to,
 					delay: latest.delay,
 					location: latest.location,
+					reason: latest.Deviation
+						? map(({ Description }) => Description)(latest.Deviation)
+						: undefined,
 					actual
 				};
 		}
@@ -38,6 +41,7 @@ function groupToTrain(now) {
 function transformAnnouncement({
 	AdvertisedTimeAtLocation,
 	AdvertisedTrainIdent,
+	Deviation,
 	FromLocation,
 	LocationSignature,
 	ProductInformation,
@@ -45,8 +49,9 @@ function transformAnnouncement({
 	TimeAtLocationWithSeconds
 }) {
 	return {
-		delay: (Date.parse(TimeAtLocationWithSeconds) - Date.parse(AdvertisedTimeAtLocation)) * 1e-3,
+		delay: (Date.parse(TimeAtLocationWithSeconds) - Date.parse(AdvertisedTimeAtLocation)) / 60000,
 		AdvertisedTrainIdent,
+		Deviation,
 		location: locations[LocationSignature] ?? LocationSignature,
 		from: FromLocation?.map(name),
 		description: ProductInformation?.[0].Description,

@@ -11,7 +11,8 @@
 				{train.description}
 				{train.id}
 				från {train.from} till {train.to}
-				är {train.delay} sekunder sent i {train.location}
+				är {Math.round(train.delay)} minuter sent i {train.location}
+				{train.reason ? `pga ${train.reason}` : ''}
 			</li>
 		{/if}
 	{/each}
